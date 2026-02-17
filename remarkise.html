@@ -1,301 +1,485 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="application-name" content="Remarkise">
+  <meta name="description" content="Render your markdown as remark slides, in real time">
+  <title>Remarkise</title>
 
-<html lang="en-GB">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
 
-  <head>
+  <style>
+    /* ── Slide presentation fonts (applied once remark takes over) ── */
+    .remark-slide-content { font-family: 'DM Sans', sans-serif; }
+    .remark-slide-content h1,
+    .remark-slide-content h2,
+    .remark-slide-content h3 { font-family: 'Syne', sans-serif; font-weight: 700; }
+    .remark-code,
+    .remark-inline-code { font-family: 'DM Mono', monospace; }
 
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="application-name" content="Remarkise">
-    <meta name="description" content="Render your markdown as remark slides, in real time">
-    <meta name="keywords" content="remark,markdown,md,slide,slideshow,remarkise,tripu">
-    <meta name="author" content="tripu - http://tripu.info">
-    <title>Remarkise&nbsp;&mdash;&nbsp;render your markdown as remark slides, in real time</title>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <style type="text/css">
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #141720;
+      --surface2:  #1c2030;
+      --border:    #2a2f45;
+      --accent:    #e8543a;
+      --accent2:   #f5a97f;
+      --text:      #e2e4ed;
+      --muted:     #6b7394;
+      --success:   #3dd68c;
+      --radius:    12px;
+      --mono:      'DM Mono', monospace;
+    }
 
-      /******************************** Original style */
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+    }
 
-      @import url('//fonts.googleapis.com/css?family=Yanone+Kaffeesatz');
-      @import url('//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic');
-      @import url('//fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic');
+    /* ── Layout ── */
+    #front-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      /* subtle grid texture */
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      background-position: center center;
+    }
 
-      body {
-        font-family:       'Droid Serif';
-      }
+    /* Radial vignette over the grid */
+    #front-page::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, var(--bg) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
 
-      h1, h2, h3 {
-        font-family:       'Yanone Kaffeesatz';
-        font-weight:       normal;
-      }
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 3rem 3.5rem;
+      width: 100%;
+      max-width: 560px;
+      box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03) inset;
+      animation: rise .5s cubic-bezier(.16,1,.3,1) both;
+    }
 
-      .remark-code, .remark-inline-code {
-        font-family:       'Ubuntu Mono';
-      }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(24px) scale(.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
 
-      /******************************** tripu's additions */
+    /* ── Logotype ── */
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2.8rem;
+      letter-spacing: -.02em;
+      line-height: 1;
+      margin-bottom: .25rem;
+    }
+    .logo span { color: var(--accent); }
 
-      div#front-page {
-        position:          absolute;
-        width:             100%;
-        height:            100%;
-      }
+    .tagline {
+      font-size: .85rem;
+      color: var(--muted);
+      margin-bottom: 2.5rem;
+      letter-spacing: .01em;
+    }
+    .tagline a { color: var(--accent2); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .2s; }
+    .tagline a:hover { border-color: var(--accent2); }
 
-      div#front-page div {
-        position:          relative;
-        top:               50%;
-        -webkit-transform: translateY(-50%);
-        -moz-transform:    translateY(-50%);
-        -ms-transform:     translateY(-50%);
-        -o-transform:      translateY(-50%);
-        transform:         translateY(-50%);
-        text-align:        center;
-      }
+    /* ── Status message ── */
+    #message {
+      font-size: .85rem;
+      color: var(--muted);
+      min-height: 1.2em;
+      margin-bottom: 1.25rem;
+      font-style: italic;
+      transition: color .2s;
+    }
+    #message.error { color: var(--accent); font-style: normal; }
+    #message a { color: inherit; }
 
-      div#front-page h1 {
-        margin-top:        0;
-        font-weight:       bold;
-      }
+    /* ── URL row ── */
+    .url-row {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1.5rem;
+    }
 
-      div#front-page h1 span {
-        color:             #c00000;
-      }
+    input[type="text"] {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .65rem 1rem;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: .8rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input[type="text"]::placeholder { color: var(--muted); }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(232,84,58,.15);
+    }
+    input[type="text"]:disabled { opacity: .4; cursor: not-allowed; }
 
-      div#front-page p {
-        font-style:        italic;
-      }
+    button.go-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 1rem;
+      padding: .65rem .9rem;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    button.go-btn:hover  { background: #f06448; }
+    button.go-btn:active { transform: scale(.95); }
 
-      div#front-page input#url {
-        min-width:         30em;
-        max-width:         80%;
-        margin-bottom:     0;
-      }
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      color: var(--muted);
+      font-size: .75rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
 
-      div#front-page input#button {
-        width:             2em;
-      }
+    /* ── Drop zone ── */
+    #drop-area {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: .85rem;
+      cursor: pointer;
+      transition: border-color .2s, background .2s, color .2s;
+      position: relative;
+    }
+    #drop-area.hovering {
+      border-color: var(--accent);
+      background: rgba(232,84,58,.06);
+      color: var(--accent2);
+    }
+    #drop-area.hidden { display: none; }
 
-      /******************************** konstantinkobs' additions */
+    .drop-icon {
+      display: block;
+      font-size: 1.8rem;
+      margin-bottom: .6rem;
+      opacity: .5;
+      transition: opacity .2s, transform .2s;
+    }
+    #drop-area.hovering .drop-icon { opacity: 1; transform: translateY(-3px); }
 
-      div#front-page p#drop-area {
-        width: 30em;
-        max-width: 80%;
-        border: 0.2em dashed #999;
-        border-radius: 1em;
-        padding: 2em 0.5em;
-        margin: 1em auto;
-      }
+    /* ── File pick button ── */
+    #file-input { display: none; }
 
-      div#front-page p#drop-area.hover {
-        background: #eee;
-      }
+    label[for="file-input"] {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: 1rem;
+      padding: .6rem 1.4rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .82rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color .2s, color .2s, background .2s;
+      font-family: var(--mono);
+    }
+    label[for="file-input"]:hover {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(245,169,127,.06);
+    }
 
-      div#front-page p#drop-area.fail {
-        display: none;
-      }
+    /* ── Footer chips ── */
+    .footer {
+      margin-top: 2rem;
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .chip {
+      font-family: var(--mono);
+      font-size: .7rem;
+      padding: .25rem .7rem;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
 
-      div#front-page p#drop-area.success {
-        display: block;
-      }
+    /* ── Loading spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: .4rem;
+    }
+  </style>
+</head>
+<body>
 
-    </style>
+<div id="front-page">
+  <div class="card">
+    <div class="logo">Remark<span>ise</span></div>
+    <p class="tagline">
+      Render <a href="https://commonmark.org/">markdown</a> as
+      <a href="https://github.com/gnab/remark">remark</a> slides — in real time
+    </p>
 
-  </head>
+    <div id="message"></div>
 
-  <body>
-
-    <div id="front-page">
-      <div>
-        <h1>Remark<span>ise</span></h1>
-        <p id="message">
-          Render your <a href="http://commonmark.org/">markdown</a> as
-          <a href="https://github.com/tripu/remark">remark</a> slides&nbsp;&mdash;&nbsp;in real time
-        </p>
-        <input id="url" placeholder="URL of a markdown file" autofocus="autofocus" />
-        <input id="button" type="submit" value="&crarr;" />
-        <p id="drop-area">
-          or drop a local markdown file here
-        </p>
-      </div>
+    <div class="url-row">
+      <input type="text" id="url" placeholder="https://…/slides.md" autocomplete="off" spellcheck="false" />
+      <button class="go-btn" id="go-btn" title="Load">↵</button>
     </div>
 
-    <script type="text/javascript" src="//code.jquery.com/jquery-2.2.1.min.js"></script>
-    <script type="text/javascript" src="downloads/remark-latest.min.js"></script>
+    <div class="divider">or</div>
 
-    <script type="text/javascript">
+    <div id="drop-area">
+      <span class="drop-icon">⬆</span>
+      Drop a <code>.md</code> file here
+      <br>
+      <label for="file-input">📂 Choose file…</label>
+      <input type="file" id="file-input" accept=".md,.txt,.markdown">
+    </div>
 
-      'use strict';
+    <div class="footer">
+      <span class="chip">.md</span>
+      <span class="chip">.txt</span>
+      <span class="chip">drag &amp; drop</span>
+      <span class="chip">url</span>
+    </div>
+  </div>
+</div>
 
-      $(document).ready(function() {
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>
+'use strict';
 
-        var FIXES = [
-          {
-            message: "Oops, error! But wait&nbsp;&mdash;&nbsp;I'm fetching the &ldquo;raw&rdquo; GitHub version instead&hellip;",
-            patterns: [
-              [/\/\/(www\.)?github.com\//i, '//raw.githubusercontent.com/'],
-              [/\/blob\//i, '/']
-            ]
-          },
-          {
-            message: "Oops, error! But wait&nbsp;&mdash;&nbsp;I'm fetching it through RawGit&hellip;",
-            patterns: [
-              [/\/\/raw\.githubusercontent\.com\//i, '//rawgit.com/']
-            ]
-          }
-        ];
+(function () {
 
-        var CSS = /<style[^>]*>[^<]*<\/style>/ig,
-              HEAD = $('head'),
-              FRONT_PAGE = $('div#front-page'),
-              MESSAGE = $('div#front-page p#message'),
-              INPUT = $('div#front-page input#url'),
-              BUTTON = $('div#front-page input#button'),
-              DROP_AREA = $('div#front-page p#drop-area'),
-              URL_PATTERN = /^(file|https?):\/\/.+/i;
+  var FIXES = [
+    {
+      message: "Fetching raw GitHub version…",
+      patterns: [
+        [/\/\/(www\.)?github\.com\//i, '//raw.githubusercontent.com/'],
+        [/\/blob\//i, '/']
+      ]
+    },
+    {
+      message: "Trying via RawGit…",
+      patterns: [
+        [/\/\/raw\.githubusercontent\.com\//i, '//rawgit.com/']
+      ]
+    }
+  ];
 
-        var nextFix = 0,
-            currentFix,
-            newUrl,
-            css,
-            i;
+  var CSS_RE    = /<style[^>]*>[^<]*<\/style>/ig;
+  var URL_PAT   = /^(file|https?):\/\/.+/i;
 
-        var reset = function() {
-          nextFix = 0;
-          INPUT.prop('disabled', false);
-          INPUT[0].value = '';
-        };
+  var frontPage = document.getElementById('front-page');
+  var msgEl     = document.getElementById('message');
+  var urlInput  = document.getElementById('url');
+  var goBtn     = document.getElementById('go-btn');
+  var dropArea  = document.getElementById('drop-area');
+  var fileInput = document.getElementById('file-input');
 
-        var trigger = function(event) {
-          if (event && ('click' === event.type || ('keypress' === event.type && 13 === event.keyCode))) {
-            if (URL_PATTERN.test(INPUT[0].value)) {
-              remarkise(INPUT[0].value);
-            } else {
-              MESSAGE.html("That doesn't look like a valid URL :-/");
-            }
-          }
-        };
+  // ── Helpers ──────────────────────────────────────────────────
 
-        var createPresentationFromText = function(data) {
-            FRONT_PAGE.hide();
-            css = data.match(CSS);
-            if (css) {
-                data = data.replace(CSS, '');
-                for (i in css) {
-                    HEAD.append(css[i]);
-                }
-            }
-            remark.create({source: data});
-        };
+  function setMessage(html, isError) {
+    msgEl.innerHTML = html;
+    msgEl.className = isError ? 'error' : '';
+  }
 
-        var getOrigin = function(url) {
-          var foo = document.createElement('a');
-          foo.href = url;
-          return foo.origin;
-        };
+  function setLoading(loading) {
+    if (loading) {
+      goBtn.innerHTML = '<span class="spinner"></span>';
+      goBtn.disabled = true;
+      urlInput.disabled = true;
+    } else {
+      goBtn.innerHTML = '↵';
+      goBtn.disabled = false;
+      urlInput.disabled = false;
+    }
+  }
 
-        var remarkise = function(url) {
+  function getOrigin(url) {
+    var a = document.createElement('a');
+    a.href = url;
+    return a.origin;
+  }
 
-          INPUT.prop('disabled', true);
-          MESSAGE.html('Fetching markdown&hellip;');
+  // ── Presentation loader ───────────────────────────────────────
 
-          $.ajax({
-            url: url,
-            error: function(data) {
-              newUrl = url;
-
-              while (nextFix < FIXES.length && newUrl.toLowerCase() === url.toLowerCase()) {
-                currentFix = FIXES[nextFix];
-
-                for(var pattern in currentFix.patterns) {
-                  newUrl = newUrl.replace(currentFix.patterns[pattern][0], currentFix.patterns[pattern][1]);
-                }
-
-                if (newUrl.toLowerCase() === url.toLowerCase()) {
-                  nextFix ++;
-                } else {
-                  MESSAGE.html(currentFix.message);
-                }
-
-              }
-
-              if (newUrl.toLowerCase() !== url.toLowerCase()) {
-                remarkise(newUrl);
-              } else {
-                if (window.location.origin.toLowerCase() === getOrigin(url).toLowerCase()) {
-                  MESSAGE.html('Error!');
-                } else {
-                  MESSAGE.html('Error! (probably a violation of the ' +
-                    '<a href="https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy">same-origin policy</a>)');
-                }
-                reset();
-              }
-
-            },
-            success: function(data) {
-              if (window.location.origin.toLowerCase() !== getOrigin(url).toLowerCase()) {
-                MESSAGE.html('Error! (probably a violation of the ' +
-                  '<a href="https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy">same-origin policy</a>)');
-              } else {
-                if (!window.location.search || !window.location.search.match(/\?url=.+/)) {
-                  history.pushState({}, null, window.location.href + '?' + $.param({url: url}));
-                }
-                createPresentationFromText(data);
-              }
-            }
-          });
-
-        };
-
-        if (window.location.search && window.location.search.match(/\?url=.+/)) {
-          remarkise(decodeURIComponent(window.location.search.split('=')[1]));
-        } else {
-          INPUT.keypress(trigger);
-          BUTTON.click(trigger);
-        }
-
-        /******************************** konstantinkobs' additions for drag and drop */
-
-        if (typeof window.FileReader === 'undefined') {
-          DROP_AREA.removeClass('success');
-          DROP_AREA.addClass('fail');
-        } else {
-          DROP_AREA.removeClass('fail');
-          DROP_AREA.addClass('success');
-        }
-
-        DROP_AREA.on("dragover", function(){
-          $(this).addClass("hover");
-          return false;
-        });
-
-        DROP_AREA.on("dragend", function(){
-          $(this).removeClass("hover");
-          return false;
-        });
-
-        DROP_AREA.on("drop", function(e){
-          $(this).removeClass("hover");
-
-          e.preventDefault();
-          e.stopPropagation();
-
-          var file = e.originalEvent.dataTransfer.files[0],
-              reader = new FileReader();
-
-          reader.onloadend = function(){
-            // load presentation from text
-            createPresentationFromText(reader.result);
-          };
-
-          reader.readAsText(file);
-
-          return false;
-        });
-
+  function createPresentationFromText(data) {
+    frontPage.style.display = 'none';
+    var css = data.match(CSS_RE);
+    if (css) {
+      data = data.replace(CSS_RE, '');
+      css.forEach(function (s) {
+        document.head.insertAdjacentHTML('beforeend', s);
       });
+    }
+    remark.create({ source: data });
+  }
 
-    </script>
+  // ── URL fetch with auto-fix ───────────────────────────────────
 
-  </body>
+  var nextFix = 0;
 
+  function remarkise(url) {
+    setLoading(true);
+    setMessage('<span class="spinner"></span> Fetching markdown…');
+
+    fetch(url)
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text();
+      })
+      .then(function (data) {
+        if (window.location.origin.toLowerCase() !== getOrigin(url).toLowerCase()) {
+          setMessage('Cross-origin error. <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy">Same-origin policy</a> violation.', true);
+          setLoading(false);
+          return;
+        }
+        var params = new URLSearchParams(window.location.search);
+        if (!params.get('url')) {
+          history.pushState({}, '', '?' + new URLSearchParams({ url: url }));
+        }
+        createPresentationFromText(data);
+      })
+      .catch(function () {
+        // Try fixes
+        if (nextFix < FIXES.length) {
+          var fix = FIXES[nextFix];
+          var newUrl = url;
+          fix.patterns.forEach(function (p) { newUrl = newUrl.replace(p[0], p[1]); });
+          if (newUrl.toLowerCase() !== url.toLowerCase()) {
+            setMessage(fix.message);
+            nextFix++;
+            remarkise(newUrl);
+            return;
+          }
+          nextFix++;
+        }
+        var sameOrigin = window.location.origin.toLowerCase() === getOrigin(url).toLowerCase();
+        setMessage(sameOrigin
+          ? 'Could not load that URL.'
+          : 'Error — possibly a <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy">same-origin</a> issue.',
+          true);
+        setLoading(false);
+        nextFix = 0;
+        urlInput.value = '';
+      });
+  }
+
+  // ── URL input trigger ─────────────────────────────────────────
+
+  function triggerUrl() {
+    var val = urlInput.value.trim();
+    if (URL_PAT.test(val)) {
+      remarkise(val);
+    } else {
+      setMessage('That doesn\'t look like a valid URL.', true);
+    }
+  }
+
+  goBtn.addEventListener('click', triggerUrl);
+  urlInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') triggerUrl();
+  });
+
+  // ── Check for ?url= on load ───────────────────────────────────
+
+  var params = new URLSearchParams(window.location.search);
+  var initialUrl = params.get('url');
+  if (initialUrl) {
+    urlInput.value = decodeURIComponent(initialUrl);
+    remarkise(decodeURIComponent(initialUrl));
+  }
+
+  // ── File input (works on Android) ────────────────────────────
+
+  fileInput.addEventListener('change', function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onloadend = function () { createPresentationFromText(reader.result); };
+    reader.readAsText(file);
+  });
+
+  // ── Drag and drop ─────────────────────────────────────────────
+
+  if (typeof window.FileReader === 'undefined') {
+    dropArea.classList.add('hidden');
+  }
+
+  dropArea.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    dropArea.classList.add('hovering');
+  });
+
+  dropArea.addEventListener('dragleave', function () {
+    dropArea.classList.remove('hovering');
+  });
+
+  dropArea.addEventListener('drop', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dropArea.classList.remove('hovering');
+    var file = e.dataTransfer.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onloadend = function () { createPresentationFromText(reader.result); };
+    reader.readAsText(file);
+  });
+
+})();
+</script>
+</body>
 </html>
